@@ -60,9 +60,8 @@ rust_decimal = ["dep:rust_decimal", "schemars/rust_decimal"]
 actix-session = ["actix", "dep:serde", "dep:actix-session"]
 uuid = ["dep:uuid", "schemars/uuid1"]
 url = ["dep:url", "schemars/url"]
-primitive_types = ["dep:primitive-types", "schemars/primitive_types"]
 alloy_primitives = ["dep:alloy-primitives", "schemars/alloy_primitives"]
 
-extras = ["chrono", "multipart", "rust_decimal", "uuid", "url", "primitive_types"]
+extras = ["chrono", "multipart", "rust_decimal", "uuid", "url", "alloy_primitives"]
 
 default = ["actix", "query"]

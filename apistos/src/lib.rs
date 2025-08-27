@@ -11,7 +11,7 @@
 //! #schemars = "0.8"
 //! # sadly we currently rely on a fork to fix multiple flatten for enums, related PR can be found here: https://github.com/GREsau/schemars/pull/264
 //! schemars = { package = "apistos-schemars", version = "0.8" }
-//! apistos = "0.4"
+//! apistos = "0.6"
 //! ```
 //!
 //! # Usage example
@@ -150,10 +150,10 @@
 
 pub use indexmap::IndexMap;
 
-pub use apistos_core::parameters::header::ApiHeader;
 pub use apistos_core::PathItemDefinition;
+pub use apistos_core::parameters::header::ApiHeader;
 pub use apistos_core::{ApiComponent, ApiErrorComponent, TypedSchema};
-pub use apistos_gen::{api_operation, ApiComponent, ApiCookie, ApiErrorComponent, ApiHeader, ApiSecurity, ApiType};
+pub use apistos_gen::{ApiComponent, ApiCookie, ApiErrorComponent, ApiHeader, ApiSecurity, ApiType, api_operation};
 pub use apistos_models::*;
 #[cfg(feature = "rapidoc")]
 pub use apistos_rapidoc::RapidocConfig;
@@ -178,5 +178,6 @@ pub mod web;
 #[cfg(test)]
 mod test {
   use actix_web_lab as _;
+  use assert_json_diff as _;
   use garde_actix_web as _;
 }

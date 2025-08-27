@@ -1,7 +1,9 @@
-use crate::internal::actix::utils::OperationUpdater;
 use crate::internal::actix::METHODS;
-use actix_service::ServiceFactory;
-use actix_web::dev::ServiceRequest;
+use crate::internal::actix::utils::OperationUpdater;
+use actix_service::boxed::BoxService;
+use actix_service::{ServiceFactory, Transform};
+use actix_web::body::MessageBody;
+use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::guard::Guard;
 use actix_web::http::Method;
 use actix_web::{Error, FromRequest, Handler, Responder};
@@ -91,6 +93,28 @@ impl Route {
     }
   }
 
+  /// Drop in for [`actix_web::Route::wrap`](https://docs.rs/actix-web/*/actix_web/struct.Route.html#method.wrap)
+  #[doc(alias = "middleware")]
+  #[doc(alias = "use")] // nodejs terminology
+  pub fn wrap<M, B>(self, mw: M) -> Self
+  where
+    M: Transform<
+        BoxService<ServiceRequest, ServiceResponse, Error>,
+        ServiceRequest,
+        Response = ServiceResponse<B>,
+        Error = Error,
+        InitError = (),
+      > + 'static,
+    B: MessageBody + 'static,
+  {
+    Route {
+      operation: self.operation,
+      path_item_type: self.path_item_type,
+      components: self.components,
+      inner: self.inner.wrap(mw),
+    }
+  }
+
   /// Wrapper for [`actix_web::Route::method`](https://docs.rs/actix-web/*/actix_web/struct.Route.html#method.method)
   pub fn method(mut self, method: Method) -> Self {
     let path_item_type = match method.as_str() {
@@ -162,7 +186,7 @@ impl RouteWrapper {
         }
         OperationTypeDoc::AllMethods => {
           for path_item_type in METHODS {
-            operations.insert(path_item_type.clone(), operation.clone());
+            operations.insert(*path_item_type, operation.clone());
           }
         }
         OperationTypeDoc::Undocumented => {}

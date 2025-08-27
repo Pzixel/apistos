@@ -2,9 +2,9 @@ use crate::ApiComponent;
 use actix_web::body::BoxBody;
 use actix_web::http::StatusCode;
 use actix_web::{HttpRequest, HttpResponse, Responder, ResponseError};
+use apistos_models::Schema;
 use apistos_models::paths::{MediaType, RequestBody, Response, Responses};
 use apistos_models::reference_or::ReferenceOr;
-use apistos_models::Schema;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
@@ -135,7 +135,7 @@ where
 }
 
 fn response_from_schema(status: StatusCode, schema: Option<(String, ReferenceOr<Schema>)>) -> Option<Responses> {
-  schema.map(|(name, schema)| match schema {
+  schema.map(|(_name, schema)| match schema {
     ReferenceOr::Reference { _ref } => Responses {
       responses: BTreeMap::from_iter(vec![(status.as_str().to_string(), ReferenceOr::Reference { _ref })]),
       ..Default::default()
@@ -145,9 +145,7 @@ fn response_from_schema(status: StatusCode, schema: Option<(String, ReferenceOr<
         content: BTreeMap::from_iter(vec![(
           "application/json".to_string(),
           MediaType {
-            schema: Some(ReferenceOr::Reference {
-              _ref: format!("#/components/schemas/{}", name),
-            }),
+            schema: Some(schema),
             ..Default::default()
           },
         )]),

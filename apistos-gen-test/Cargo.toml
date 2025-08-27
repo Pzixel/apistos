@@ -13,7 +13,7 @@ repository.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
-[dependencies]
+[dev-dependencies]
 actix-multipart = { workspace = true }
 actix-web = { workspace = true }
 actix-web-grants = { workspace = true }
@@ -21,8 +21,8 @@ assert-json-diff = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
 futures-core = { workspace = true }
 apistos = { path = "../apistos", features = ["multipart", "uuid"] }
-apistos-core = { path = "../apistos-core", version = "0.4.2", features = ["actix-web-grants"] }
-apistos-gen = { path = "../apistos-gen", version = "0.4.2" }
+apistos-core = { path = "../apistos-core", version = "0.6.0", features = ["actix-web-grants"] }
+apistos-gen = { path = "../apistos-gen", version = "0.6.0" }
 # we use the "preserve_order" feature from schemars here following https://github.com/netwo-io/apistos/pull/78
 schemars = { workspace = true, features = ["preserve_order", "chrono"] }
 serde = { workspace = true, features = ["derive"] }

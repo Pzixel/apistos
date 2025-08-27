@@ -4,13 +4,13 @@ use crate::internal::definition_holder::DefinitionHolder;
 use crate::spec::{DefaultParameters, Spec};
 use crate::web::ServiceConfig;
 use actix_service::{IntoServiceFactory, ServiceFactory, Transform};
+use actix_web::Error;
 use actix_web::body::MessageBody;
 use actix_web::dev::{HttpServiceFactory, ServiceRequest, ServiceResponse};
 use actix_web::web::{get, resource};
-use actix_web::Error;
+use apistos_models::OpenApi;
 use apistos_models::paths::{OperationType, Parameter};
 use apistos_models::reference_or::ReferenceOr;
-use apistos_models::OpenApi;
 use apistos_plugins::ui::{UIPluginConfig, UIPluginWrapper};
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
@@ -60,11 +60,31 @@ pub struct App<T> {
 #[derive(Default)]
 pub struct BuildConfig {
   ui_plugin_configs: Vec<Box<dyn UIPluginConfig>>,
+  spec_path: Option<String>,
+  disable_openapi_route: bool,
 }
 
 impl BuildConfig {
   pub fn with<T: UIPluginConfig + 'static>(mut self, plugin: T) -> Self {
     self.ui_plugin_configs.push(Box::new(plugin));
+    self
+  }
+
+  /// Override the openapi spec path
+  pub fn with_spec_path<T: Into<String>>(mut self, spec_path: T) -> Self {
+    self.spec_path = Some(spec_path.into());
+    self
+  }
+
+  /// Prevent openapi route from being exposed
+  pub fn disable_openapi_route(mut self) -> Self {
+    self.disable_openapi_route = true;
+    self
+  }
+
+  /// Expose openapi route (the default)
+  pub fn enable_openapi_route(mut self) -> Self {
+    self.disable_openapi_route = false;
     self
   }
 }
@@ -214,7 +234,7 @@ where
       .service(resource(openapi_path).route(get().to(OASHandler::new(open_api_spec))))
   }
 
-  /// Add a new resource at **`openapi_path`** to expose the generated openapi schema optionnaly exposing it through UIs and return an [actix_web::App](https://docs.rs/actix-web/latest/actix_web/struct.App.html)
+  /// Add a new resource at **`openapi_path`** to expose the generated openapi schema optionally exposing it through UIs and return an [actix_web::App](https://docs.rs/actix-web/latest/actix_web/struct.App.html)
   ///
   /// ```rust,ignore
   /// use actix_web::App;
@@ -236,12 +256,18 @@ where
   /// ```
   #[allow(clippy::unwrap_used, clippy::expect_used)]
   pub fn build_with(self, openapi_path: &str, config: BuildConfig) -> actix_web::App<T> {
-    let open_api_spec = self.open_api_spec.read().unwrap().clone();
-
     let mut actix_app = self.inner.expect("Missing app");
 
+    if config.disable_openapi_route {
+      return actix_app;
+    }
+
+    let open_api_spec = self.open_api_spec.read().unwrap().clone();
+
+    let spec_path = config.spec_path.as_ref().map_or(openapi_path, String::as_str);
+
     for plugin in config.ui_plugin_configs {
-      actix_app = actix_app.service(UIPluginWrapper::from(plugin.build(openapi_path)))
+      actix_app = actix_app.service(UIPluginWrapper::from(plugin.build(spec_path)))
     }
 
     actix_app.service(resource(openapi_path).route(get().to(OASHandler::new(open_api_spec))))
@@ -273,7 +299,7 @@ where
       };
 
       item.operations.iter_mut().for_each(|(op_type, op)| {
-        let operation_id = build_operation_id(&path, op_type);
+        let operation_id = build_operation_id(&path, *op_type);
         op.operation_id = op.operation_id.clone().or(Some(operation_id));
       });
 
@@ -342,7 +368,7 @@ fn sanitize_patterned_path_parameter(path: &str) -> String {
 #[allow(clippy::expect_used)]
 static PATH_RESOURCE_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"/(.*?)/\{(.*?)\}").expect("path template regex"));
 
-fn build_operation_id(path: &str, operation_type: &OperationType) -> String {
+fn build_operation_id(path: &str, operation_type: OperationType) -> String {
   let resource = PATH_RESOURCE_REGEX
     .captures(path)
     .and_then(|c| c.get(1))
@@ -362,14 +388,14 @@ fn build_operation_id(path: &str, operation_type: &OperationType) -> String {
 mod test {
   #![allow(clippy::expect_used)]
 
-  use crate::app::{build_operation_id, BuildConfig, OpenApiWrapper};
+  use crate::app::{BuildConfig, OpenApiWrapper, build_operation_id};
   use crate::spec::Spec;
-  use actix_web::test::{call_service, init_service, try_read_body_json, TestRequest};
   use actix_web::App;
+  use actix_web::test::{TestRequest, call_and_read_body, call_service, init_service, try_read_body_json};
+  use apistos_models::OpenApi;
   use apistos_models::info::Info;
   use apistos_models::paths::OperationType;
   use apistos_models::tag::Tag;
-  use apistos_models::OpenApi;
   use apistos_rapidoc::RapidocConfig;
   use apistos_redoc::RedocConfig;
   use apistos_scalar::ScalarConfig;
@@ -590,13 +616,39 @@ mod test {
 
   #[test]
   fn test_build_operation_id() {
-    let operation_id = build_operation_id("/api/v1/plop/", &OperationType::Get);
+    let operation_id = build_operation_id("/api/v1/plop/", OperationType::Get);
     assert_eq!(operation_id, "get_api-v1-plop-89654e0732d51aafdc164076a57fd663");
 
-    let operation_id = build_operation_id("/api/v1/plap/{test_id}", &OperationType::Get);
+    let operation_id = build_operation_id("/api/v1/plap/{test_id}", OperationType::Get);
     assert_eq!(operation_id, "get_api-v1-plap-97ba4631a55f77d23b996bf558be60da");
 
-    let operation_id = build_operation_id("/api/v1/plip/{test_id}/test/", &OperationType::Get);
+    let operation_id = build_operation_id("/api/v1/plip/{test_id}/test/", OperationType::Get);
     assert_eq!(operation_id, "get_api-v1-plip-f5c9e39d7a1acb928c72745f3893bce8")
+  }
+
+  #[actix_web::test]
+  async fn test_prefixed_openapi_path() {
+    let openapi_path = "/test.json";
+    let rapidoc_path = "/rapidoc";
+    let spec_path = "/myservice/test.json";
+    let expected_spec_url = "spec-url=\"/myservice/test.json\"";
+
+    let app = App::new().document(Spec::default()).build_with(
+      openapi_path,
+      BuildConfig::default()
+        .with_spec_path(spec_path)
+        .with(RapidocConfig::new(&rapidoc_path)),
+    );
+    let app = init_service(app).await;
+
+    let req = TestRequest::get().uri(openapi_path).to_request();
+    let resp = call_service(&app, req).await;
+    assert!(resp.status().is_success());
+
+    let req = TestRequest::get().uri(rapidoc_path).to_request();
+    let body = call_and_read_body(&app, req).await;
+
+    let body = String::from_utf8(body.to_vec()).expect("Unable to convert body to string");
+    assert!(body.contains(expected_spec_url), "Body: {body}");
   }
 }

@@ -2,14 +2,14 @@ use actix_web::middleware::Logger;
 use actix_web::web::{Json, Path};
 use actix_web::{App, Error};
 
-use actix_web::test::{call_service, init_service, try_read_body_json, TestRequest};
+use actix_web::test::{TestRequest, call_service, init_service, try_read_body_json};
 use apistos::app::OpenApiWrapper;
 use apistos::spec::Spec;
-use apistos::web::{delete, get, patch, post, put, resource, scope, tagged_resource, tagged_scope, ServiceConfig};
-use apistos_gen::{api_operation, ApiComponent};
+use apistos::web::{ServiceConfig, delete, get, patch, post, put, resource, scope, tagged_resource, tagged_scope};
+use apistos_gen::{ApiComponent, api_operation};
+use apistos_models::OpenApi;
 use apistos_models::info::Info;
 use apistos_models::tag::Tag;
-use apistos_models::OpenApi;
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -155,7 +155,7 @@ async fn actix_routing_multiple_root_definition_holder() {
 
   let app = App::new()
     .document(spec)
-    .service(scope("test").service(resource("/{plop_id}/{clap_name}").route(get().to(test))))
+    .service(scope("test").service(resource("/{plop_id}/{clap_name}").route(get().to(test).wrap(Logger::default()))))
     .service(scope("test2").service(resource("/{clap_name}").route(get().to(test2))))
     .build("/openapi.json");
   let app = init_service(app).await;
@@ -179,6 +179,7 @@ use apistos_rapidoc as _;
 use apistos_redoc as _;
 use apistos_scalar as _;
 use apistos_swagger_ui as _;
+use assert_json_diff as _;
 use futures_util as _;
 use garde_actix_web as _;
 use indexmap as _;

@@ -1,6 +1,6 @@
+use crate::internal::actix::METHODS;
 use crate::internal::actix::route::{Route, RouteWrapper};
 use crate::internal::actix::utils::OperationUpdater;
-use crate::internal::actix::METHODS;
 use actix_service::{ServiceFactory, Transform};
 use actix_web::body::MessageBody;
 use actix_web::dev::{AppService, HttpServiceFactory, ServiceRequest, ServiceResponse};
@@ -113,7 +113,7 @@ where
       operation.tags.append(&mut self.tags.clone());
       let mut item_definition = self.item_definition.unwrap_or_default();
       for method in METHODS {
-        item_definition.operations.insert(method.clone(), operation.clone());
+        item_definition.operations.insert(*method, operation.clone());
       }
       operation.update_path_parameter_name_from_path(&self.path);
       self.item_definition = Some(item_definition);

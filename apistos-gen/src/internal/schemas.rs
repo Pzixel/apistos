@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 
 pub(crate) struct Schemas {
   pub(crate) deprecated: bool,
@@ -29,7 +29,7 @@ impl ToTokens for Schemas {
       Some(m) => m.title = m.title.clone().or_else(|| Some(prop_name.clone())),
     });
     let update_single_enum_value = quote!(if enum_values.len() == 1 {
-      if let Some(schemars::_serde_json::Value::String(prop_name)) = enum_values.first() {
+      if let Some(schemars::_serde_json::Value::String(prop_name)) = enum_values.as_slice().first() {
         #update_metadata_title
       }
     });
@@ -57,9 +57,9 @@ impl ToTokens for Schemas {
 
     tokens.extend(quote! {
       fn child_schemas() -> Vec<(String, apistos::reference_or::ReferenceOr<apistos::Schema>)> {
-        let settings = schemars::gen::SchemaSettings::openapi3();
-        let mut gen = settings.into_generator();
-        let schema: apistos::RootSchema = gen.into_root_schema_for::<Self>();
+        let settings = schemars::r#gen::SchemaSettings::openapi3();
+        let mut generator = settings.into_generator();
+        let schema: apistos::RootSchema = generator.into_root_schema_for::<Self>();
 
         let mut schemas: Vec<(String, apistos::reference_or::ReferenceOr<apistos::Schema>)> = vec![];
         for (def_name, mut def) in schema.definitions {
@@ -79,9 +79,9 @@ impl ToTokens for Schemas {
       fn schema() -> Option<(String, apistos::reference_or::ReferenceOr<apistos::Schema>)> {
         let (name, schema) = {
           let schema_name = <Self as schemars::JsonSchema>::schema_name();
-          let settings = schemars::gen::SchemaSettings::openapi3();
-          let mut gen = settings.into_generator();
-          let mut schema: apistos::RootSchema = gen.into_root_schema_for::<Self>();
+          let settings = schemars::r#gen::SchemaSettings::openapi3();
+          let mut generator = settings.into_generator();
+          let mut schema: apistos::RootSchema = generator.into_root_schema_for::<Self>();
           if let Some(one_of) = schema.schema.subschemas.as_mut().and_then(|s| s.one_of.as_mut()) {
             #update_one_of_title
           }

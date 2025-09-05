@@ -44,7 +44,7 @@ proc-macro2 = "1.0"
 proc-macro-error = "1.0"
 quote = "1.0"
 regex = ">=1.5.5"
-schemars = { package = "apistos-schemars", git = "https://github.com/Pzixel/apistos-schemars.git", rev = "36b66fda48892d0236fd200405ebb11b3925e884", version = "0.8.22" }
+schemars = { package = "apistos-schemars", git = "https://github.com/Pzixel/apistos-schemars.git", rev = "e1aace86473a9c5f4f8ce7839eb46d5a010533ea", version = "0.8.22" }
 serde = "1"
 serde_json = "1"
 syn = "2.0"
